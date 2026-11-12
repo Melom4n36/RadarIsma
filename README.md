@@ -1,61 +1,88 @@
-# RadarIsma — recopilación verificable de Reddit
+# RadarIsma
 
-Este proyecto separa la **recopilación** de Reddit de la selección editorial y del PDF.
+Quiero seguir lo más interesante de Reddit sin depender únicamente de lo que encuentran los buscadores. Por eso empecé RadarIsma: un pequeño programa en Python que reúne publicaciones de 19 comunidades que sigo y deja la información organizada para preparar mis informes semanales en español.
 
-## Requisitos
+El proyecto es personal, sin fines comerciales y todavía está en desarrollo.
 
-- Python 3.10 o superior; no requiere paquetes externos.
-- **Autorización de Reddit** para usar su Data API. No ejecutes el recopilador contra Reddit hasta obtenerla.
-- Credenciales `REDDIT_CLIENT_ID` y `REDDIT_CLIENT_SECRET` de una aplicación que permita el flujo OAuth de aplicación (`client_credentials`). El flujo definitivo dependerá de lo que apruebe Reddit.
-- Un `REDDIT_USER_AGENT` identificable, por ejemplo `script:reddit-radar:0.1 (by /u/TU_USUARIO)`.
+## ¿Qué hace por ahora?
 
-No incorpora técnicas para saltarse bloqueos ni utiliza servicios de scraping.
+- Consulta los apartados **new** y **top** de los 19 subreddits definidos en `collect.py`.
+- Filtra las publicaciones por fecha y por comunidad.
+- Guarda el título, el contenido disponible, la fecha, el enlace directo, la puntuación (`score`) y el número de comentarios (`num_comments`).
+- Puede recuperar una muestra de comentarios públicos de algunos hilos. No equivale a leer toda la conversación.
+- Descarta publicaciones duplicadas por ID y omite los mensajes fijados.
+- Exporta los resultados a **JSON** y **CSV**, junto con un archivo que indica qué se pudo consultar y dónde hubo errores.
 
-## Uso
+La idea es usar después estos datos para seleccionar buenas discusiones, leerlas con más cuidado y preparar el informe en PDF. **Esa parte editorial todavía no está automatizada.**
 
-En PowerShell, **una vez autorizado el acceso**:
+## Comunidades incluidas
+
+`r/ArtificialInteligence`, `r/ChatGPT`, `r/ClaudeAI`, `r/CompTIA`, `r/DeepSeek`, `r/Futurology`, `r/GeminiAI`, `r/GoogleAIStudio`, `r/MistralAI`, `r/OpenAI`, `r/PromptEngineering`, `r/antiai`, `r/claude`, `r/filen_io`, `r/opensource`, `r/perplexity_ai`, `r/singularity`, `r/sysadmin` y `r/vibecoding`.
+
+## Antes de usarlo
+
+Necesitas **Python 3.10 o superior**. No hay que instalar bibliotecas adicionales: el programa utiliza la biblioteca estándar de Python.
+
+También necesitas que **Reddit autorice el uso de su Data API**. La solicitud está pendiente, así que aún no he comprobado el funcionamiento del programa con una conexión real a Reddit.
+
+El prototipo utiliza OAuth con el flujo `client_credentials`. Para ejecutarlo tendrás que configurar `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` y un `REDDIT_USER_AGENT` identificable. El acceso y el flujo disponibles dependerán de la autorización que conceda Reddit.
+
+No compartas las credenciales ni las subas a GitHub.
+
+## Cómo ejecutarlo
+
+Una vez que tengas acceso autorizado, abre PowerShell en la carpeta del proyecto y configura estas variables:
 
 ```powershell
 $env:REDDIT_CLIENT_ID = 'TU_ID'
 $env:REDDIT_CLIENT_SECRET = 'TU_SECRETO'
 $env:REDDIT_USER_AGENT = 'script:reddit-radar:0.1 (by /u/TU_USUARIO)'
+
 python .\collect.py --days 7 --comments 20
 ```
 
-El script crea `output/reddit_YYYY-MM-DD.json`, `output/reddit_YYYY-MM-DD.csv` y `output/coverage_YYYY-MM-DD.json`. Por defecto usa los últimos 7 días en UTC; puedes fijar la fecha de corte con `--end-date YYYY-MM-DD` (incluye ese día UTC). Para una edición semanal consistente, fija `--end-date`.
+Por defecto, `--days 7` toma los últimos siete días en **UTC**. Si quieres cerrar el informe en una fecha concreta, usa `--end-date YYYY-MM-DD`, por ejemplo:
 
-## Qué verifica
+```powershell
+python .\collect.py --days 7 --end-date 2026-11-12 --comments 20
+```
 
-- Recorre **las 19 comunidades solicitadas**, sin sustituir una por otra.
-- Obtiene listados recientes y populares; filtra por fecha y subreddit exacto.
-- Elimina duplicados por ID, conserva enlaces directos y métricas disponibles.
-- Recupera una muestra de comentarios principales (si está permitido), sin presentarla como consenso exhaustivo.
-- Genera un archivo de cobertura por comunidad con recuentos, errores y estado.
-- Si falla una comunidad, lo informa: **no declara que no hubo publicaciones**.
+En ese caso, la fecha indicada se incluye completa en UTC. También puedes ajustar la búsqueda con `--pages` y limitar los hilos cuyos comentarios se consultan con `--max-comment-posts`.
 
-## Límites
+El programa crea estos archivos dentro de `output/`:
 
-- La API puede no estar disponible para esta cuenta o aplicación; errores 401/403/429 pueden impedir la consulta.
-- Los listados tienen límites de paginación; `--pages` controla cuántas páginas revisar por ordenación. La ausencia de resultados no prueba ausencia de actividad.
-- `score`, `num_comments` y votos son instantáneas, no estadísticas históricas.
-- Los comentarios recuperados son una muestra y no incluyen necesariamente todas las respuestas anidadas.
-- El prototipo no implementa todavía controles automáticos de retención y eliminación de datos. **Estos deben implementarse antes del uso operativo**, conforme a las condiciones de autorización de Reddit.
-- No envíes información confidencial, tokens ni credenciales al chat. Mantén secretos fuera de GitHub.
+- `reddit_YYYY-MM-DD.json`: publicaciones y muestras de comentarios.
+- `reddit_YYYY-MM-DD.csv`: datos principales para revisar o filtrar.
+- `coverage_YYYY-MM-DD.json`: resultados de consulta por comunidad, incluidos los errores.
 
-## Siguiente etapa
+La carpeta `output/` está excluida de Git mediante `.gitignore`.
 
-Usar el JSON como entrada de una revisión editorial: seleccionar 1–3 hilos útiles por comunidad cuando haya evidencia, comprobar contenido y comentarios, y generar el PDF. No automatizar resúmenes de publicaciones que no se hayan podido leer.
+## Lo que todavía hay que resolver
 
-## Estado y pruebas
+Prefiero dejar claros los límites desde el principio:
 
-**Prototipo sin acceso a la API validado:** el código supera tres pruebas locales sin red; no se ha comprobado todavía una sesión real con Reddit. Su funcionamiento depende de la autorización de Reddit y de que el flujo OAuth seleccionado sea aceptado para la aplicación aprobada.
+- **No garantiza una recopilación completa.** Reddit limita la paginación y la disponibilidad de sus listados. Que no aparezca un hilo no significa que no exista.
+- **Los comentarios son una muestra.** Algunas respuestas anidadas pueden quedar fuera; no sirve para afirmar que toda una comunidad piensa igual.
+- **Las métricas son instantáneas.** `score` y `num_comments` pueden cambiar después de la consulta.
+- **Puede fallar el acceso.** Errores HTTP `401`, `403` o `429`, entre otros, pueden impedir recuperar información. Esos fallos deben revisarse en el archivo de cobertura.
+- **Faltan controles de conservación y borrado de datos.** Tendré que implementarlos antes de utilizar el sistema de forma habitual y de acuerdo con las condiciones que establezca Reddit.
 
-Ejecutar pruebas locales:
+No hay funciones para publicar, votar, enviar mensajes o modificar cuentas. Tampoco se intenta eludir las restricciones de acceso de Reddit.
+
+## Pruebas
+
+El repositorio incluye tres pruebas que no necesitan conexión ni credenciales. Puedes ejecutarlas así:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-No subas secretos ni archivos de salida al repositorio. Este proyecto **no** incluye publicación automática de informes, inteligencia artificial, entrenamiento de modelos ni procesamiento de datos personales. Antes de añadir modelos de IA o distribuir datos de Reddit, comprueba que lo permitan la autorización recibida y las condiciones vigentes.
+Estas pruebas comprueban la lista de comunidades, la preparación de la solicitud OAuth y el filtrado básico de comentarios. **No sustituyen una prueba real con la API de Reddit.**
 
-Repositorio destinado a respaldar una **solicitud de acceso**, no prueba de que Reddit haya autorizado la aplicación.
+## Qué sigue
+
+Primero necesito obtener la autorización de Reddit y comprobar que el recopilador puede leer publicaciones y comentarios correctamente. Después tocará mejorar la cobertura, fijar las reglas de conservación de datos y preparar la selección editorial y el PDF.
+
+Los datos recopilados no se utilizarán para entrenar modelos. Si más adelante incorporo resúmenes asistidos por IA, revisaré antes que ese uso esté permitido por la autorización y las condiciones de Reddit.
+
+Este repositorio acompaña una **solicitud de acceso a la Data API**; que el código esté publicado no significa que Reddit ya haya aprobado su uso.
